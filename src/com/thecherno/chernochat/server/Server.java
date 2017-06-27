@@ -22,6 +22,8 @@ public class Server implements Runnable {
 
 	private boolean raw = false;
 
+	private boolean forceStop=false;
+
 	public Server(int port) {
 		this.port = port;
 		try {
@@ -76,7 +78,7 @@ public class Server implements Runnable {
 							break;
 						}
 					}
-					if (exists) disconnect(id, true);
+					if (exists) { disconnect(id, true);}
 					else System.out.println("Client " + id + " doesn't exist! Check ID number.");
 				} else {
 					for (int i = 0; i < clients.size(); i++) {
@@ -173,11 +175,14 @@ public class Server implements Runnable {
 			String text = message.substring(3);
 			text = text.split("/e/")[0];
 			System.out.println(message);
+		}else if(message.startsWith("/q/")){
+			message=message.substring(3,message.length());
 		}
 		for (int i = 0; i < clients.size(); i++) {
 			ServerClient client = clients.get(i);
 			send(message.getBytes(), client.address, client.port);
 		}
+		if(message.contains("Server is shutting down")) forceStop=true;
 	}
 
 	private void send(final byte[] data, final InetAddress address, final int port) {
@@ -186,7 +191,10 @@ public class Server implements Runnable {
 				DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
 				try {
 					socket.send(packet);
-				} catch (IOException e) {
+				}catch(SocketException ex) {
+
+				}
+				catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
@@ -217,13 +225,21 @@ public class Server implements Runnable {
 			disconnect(Integer.parseInt(id), true);
 		} else if (string.startsWith("/i/")) {
 			clientResponse.add(Integer.parseInt(string.split("/i/|/e/")[1]));
-		} else {
+		}
+		else {
 			System.out.println(string);
 		}
 	}
 
 	private void quit() {
-		for (int i = 0; i < clients.size(); i++) {
+
+			String message="/m/Server is shutting down/e/";
+			sendToAll(message);
+
+		while(true) {
+			if(forceStop) break;
+		}
+		for(int i=0;i<clients.size();i++) {
 			disconnect(clients.get(i).getID(), true);
 		}
 		running = false;
